@@ -6,6 +6,11 @@ export class MemoryRepository implements UrlStore {
   private nextId = 1;
 
   async create(shortCode: string, originalUrl: string): Promise<UrlRecord> {
+    if (this.records.has(shortCode)) {
+      const error = new Error('Short code already exists') as Error & { code: string };
+      error.code = '23505';
+      throw error;
+    }
     const record: UrlRecord = { id: this.nextId++, shortCode, originalUrl, clicks: 0, createdAt: new Date() };
     this.records.set(shortCode, record);
     return record;

@@ -22,6 +22,9 @@ export function createApp(service: UrlService): express.Application {
       return response.status(201).json({ shortCode: record.shortCode, shortUrl: `${config.publicUrl}/${record.shortCode}` });
     } catch (error) {
       console.error('POST /api/shorten failed:', error);
+      if (error instanceof Error && error.message === 'Original URL cannot point to the short link service') {
+        return response.status(400).json({ error: 'Нельзя создавать ссылку на этот сервис' });
+      }
       const isDatabaseUnavailable = typeof error === 'object' && error !== null && 'code' in error && error.code === 'ECONNREFUSED';
       return response.status(500).json({ error: isDatabaseUnavailable ? 'PostgreSQL недоступен на localhost:5432. Запустите PostgreSQL или включите STORAGE_MODE=memory для локальной разработки.' : 'Не удалось создать короткую ссылку.' });
     }

@@ -9,4 +9,6 @@ export interface UrlRecord {
 export interface CachedUrl {
   shortCode: string;
   originalUrl: string;
+  clicks: number;
+  createdAt: string;
 }

@@ -13,7 +13,15 @@ redis?.on('error', (error: Error) => console.warn('Redis connection unavailable:
 pool.on('error', (error: Error) => console.warn('PostgreSQL pool error:', error.message));
 const repository = config.storageMode === 'memory' ? new MemoryRepository() : new UrlRepository(pool);
 if (config.storageMode === 'memory') console.warn('Using in-memory storage. Set STORAGE_MODE=postgres for PostgreSQL persistence.');
-const service = new UrlService(repository, redis);
+const service = new UrlService(repository, redis, config.publicUrl);
 const app = createApp(service);
 
-app.listen(config.port, () => console.log(`ShortLink API listening on port ${config.port}`));
+const server = app.listen(config.port, () => console.log(`ShortLink API listening on port ${config.port}`));
+server.on('error', (error: NodeJS.ErrnoException) => {
+	if (error.code === 'EADDRINUSE') {
+		console.error(`Port ${config.port} is already in use. Stop the existing API or start with another PORT.`);
+	} else {
+		console.error('Failed to start the API:', error);
+	}
+	process.exitCode = 1;
+});
