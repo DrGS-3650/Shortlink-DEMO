@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { describe, expect, it, jest } from '@jest/globals';
 import { createApp } from './app';
 import { MemoryRepository } from './repositories/memoryRepository';
 import { UrlService } from './services/urlService';
@@ -13,20 +14,20 @@ describe('API validation', () => {
   });
 
   it('returns 404 for unknown code', async () => {
-    (service.getCachedOrStored as jest.Mock).mockResolvedValue(null);
+    (service.getCachedOrStored as jest.Mock<any>).mockResolvedValue(null);
     const response = await request(app).get('/api/stats/abc123');
     expect(response.status).toBe(404);
   });
 
   it('creates a short link', async () => {
-    (service.create as jest.Mock).mockResolvedValue({ shortCode: 'abc123' });
+    (service.create as jest.Mock<any>).mockResolvedValue({ shortCode: 'abc123' });
     const response = await request(app).post('/api/shorten').send({ originalUrl: 'https://example.com/article' });
     expect(response.status).toBe(201);
     expect(response.body.shortCode).toBe('abc123');
   });
 
   it('redirects and increments clicks', async () => {
-    (service.getCachedOrStored as jest.Mock).mockResolvedValue({ shortCode: 'abc123', originalUrl: 'https://example.com/article' });
+    (service.getCachedOrStored as jest.Mock<any>).mockResolvedValue({ shortCode: 'abc123', originalUrl: 'https://example.com/article' });
     const response = await request(app).get('/abc123');
     expect(response.status).toBe(302);
     expect(service.incrementClicks).toHaveBeenCalledWith('abc123');
@@ -128,27 +129,31 @@ describe('URL storage behavior', () => {
     const repository = new MemoryRepository();
     const incrementClicks = jest.spyOn(repository, 'incrementClicks');
     const cache = new Map<string, string>();
+    const evalRedis = jest.fn(async (_script: string, _keyCount: number, key: string, _ttl: number) => {
+      const value = JSON.parse(cache.get(key) as string) as { clicks: number };
+      value.clicks += 1;
+      cache.set(key, JSON.stringify(value));
+      return value.clicks;
+    });
     const redis = {
       get: jest.fn(async (key: string) => cache.get(key) ?? null),
       set: jest.fn(async (key: string, value: string) => { cache.set(key, value); return 'OK'; }),
-      eval: jest.fn(async (_script: string, _keyCount: number, key: string, _ttl: number) => {
-        const value = JSON.parse(cache.get(key) as string) as { clicks: number };
-        value.clicks += 1;
-        cache.set(key, JSON.stringify(value));
-        return value.clicks;
-      }),
+      eval: evalRedis,
     } as never;
     const service = new UrlService(repository, redis);
     const created = await service.create('https://example.com/article');
     const app = createApp(service);
 
-    const firstRedirect = await request(app).get(`/${created.shortCode}`);
-    const secondRedirect = await request(app).get(`/${created.shortCode}`);
+    const [firstRedirect, secondRedirect] = await Promise.all([
+      request(app).get(`/${created.shortCode}`),
+      request(app).get(`/${created.shortCode}`),
+    ]);
     const stats = await request(app).get(`/api/stats/${created.shortCode}`);
 
     expect(firstRedirect.status).toBe(302);
     expect(secondRedirect.status).toBe(302);
     expect(stats.body.clicks).toBe(2);
+    expect(evalRedis).toHaveBeenCalledTimes(2);
     expect(incrementClicks).not.toHaveBeenCalled();
   });
 });
