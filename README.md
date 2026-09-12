@@ -33,7 +33,7 @@ npm run dev
 docker compose up --build
 ```
 
-При необходимости запустить через vite с отключением docker'а вписывайте следующую команду
+Чтобы запустить frontend через Vite локально после остановки Docker-контейнеров, выполните:
 
 ```bash
 docker compose down; npm run dev
@@ -44,7 +44,6 @@ docker compose down; npm run dev
 ```bash
 docker compose down -v
 ```
-! Примечание для незнающих: `;` выступает как последователь выполнения команд, чтобы не писать несколько команд по отдельности.
 
 В Windows скрипт использует `npm.cmd`, поэтому `npm run dev` не вызывает ошибку PowerShell `EACCES` из-за политики выполнения `npm.ps1`. Если PostgreSQL и Redis не установлены локально, запустите их через `docker compose up postgres redis`, затем повторите `npm run dev`.
 
