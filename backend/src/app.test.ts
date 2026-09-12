@@ -77,6 +77,12 @@ describe('URL storage behavior', () => {
     const redis = {
       get: jest.fn(async (key: string) => cache.get(key) ?? null),
       set: jest.fn(async (key: string, value: string) => { cache.set(key, value); return 'OK'; }),
+      eval: jest.fn(async (_script: string, _keyCount: number, key: string, _ttl: number) => {
+        const value = JSON.parse(cache.get(key) as string) as { clicks: number };
+        value.clicks += 1;
+        cache.set(key, JSON.stringify(value));
+        return value.clicks;
+      }),
     } as never;
     const service = new UrlService(repository, redis);
     const created = await service.create('https://example.com/article');
@@ -93,6 +99,12 @@ describe('URL storage behavior', () => {
     const redis = {
       get: jest.fn(async (key: string) => cache.get(key) ?? null),
       set: jest.fn(async (key: string, value: string) => { cache.set(key, value); return 'OK'; }),
+      eval: jest.fn(async (_script: string, _keyCount: number, key: string, _ttl: number) => {
+        const value = JSON.parse(cache.get(key) as string) as { clicks: number };
+        value.clicks += 1;
+        cache.set(key, JSON.stringify(value));
+        return value.clicks;
+      }),
     } as never;
     const service = new UrlService(repository, redis);
     const created = await service.create('https://example.com/article');
@@ -119,6 +131,12 @@ describe('URL storage behavior', () => {
     const redis = {
       get: jest.fn(async (key: string) => cache.get(key) ?? null),
       set: jest.fn(async (key: string, value: string) => { cache.set(key, value); return 'OK'; }),
+      eval: jest.fn(async (_script: string, _keyCount: number, key: string, _ttl: number) => {
+        const value = JSON.parse(cache.get(key) as string) as { clicks: number };
+        value.clicks += 1;
+        cache.set(key, JSON.stringify(value));
+        return value.clicks;
+      }),
     } as never;
     const service = new UrlService(repository, redis);
     const created = await service.create('https://example.com/article');

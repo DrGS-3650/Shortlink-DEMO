@@ -5,6 +5,14 @@ import { CachedUrl, UrlRecord } from '../types';
 
 const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const CACHE_TTL_SECONDS = 60 * 60;
+const INCREMENT_CLICKS_SCRIPT = `
+  local cached = redis.call('GET', KEYS[1])
+  if not cached then return 0 end
+  local value = cjson.decode(cached)
+  value.clicks = (value.clicks or 0) + 1
+  redis.call('SET', KEYS[1], cjson.encode(value), 'EX', ARGV[1])
+  return value.clicks
+`;
 
 export class UrlService {
   constructor(private readonly repository: UrlStore, private readonly redis: Redis | null, private readonly publicUrl?: string) {}
@@ -48,11 +56,13 @@ export class UrlService {
   async incrementClicks(shortCode: string): Promise<void> {
     if (this.redis) {
       try {
-        const cached = await this.redis.get(this.cacheKey(shortCode));
-        if (cached) {
-          const value = JSON.parse(cached) as CachedUrl;
-          value.clicks += 1;
-          await this.redis.set(this.cacheKey(shortCode), JSON.stringify(value), 'EX', CACHE_TTL_SECONDS);
+        const incremented = await this.redis.eval(
+          INCREMENT_CLICKS_SCRIPT,
+          1,
+          this.cacheKey(shortCode),
+          CACHE_TTL_SECONDS,
+        );
+        if (incremented) {
           return;
         }
       } catch (error) {
